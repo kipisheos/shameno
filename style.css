@@ -1,0 +1,40 @@
+.body {
+  margin: auto;
+  background-color: #81AA7D;
+  font-family: "Courier New", sans-serif;
+}
+
+#top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  margin: 0 20px;
+}
+
+#logo {
+  height: 30px;
+  display: none;
+}
+
+#exit-button {
+  font-family: "Courier New", sans-serif;
+  background-color: #81AA7D;
+  height: 30px;
+  width: 80px;
+  border-radius: 15px;
+  color: white;
+  border: 1px solid black;
+  display: none;
+}
+
+#score {
+  display: none;
+  height: 30px;
+  width: 130px;
+  border-radius: 15px;
+  border: 1px solid black;
+  align-content: center;
+  text-align: center;
+}
+

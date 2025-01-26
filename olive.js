@@ -1,86 +1,122 @@
-let player;
-let fallingDots = [];
-let dotInterval = 60; // Time between dots (frames)
+/* States */
+let gameState = 'menu';
 let score = 0;
 let level = 1;
-let playerWidth = 100;
+
+/* Game elements */
+let player, character;
+let fallingDots = [];
+let dotInterval = 60;
 let playerSpeed = 12;
-let dotSpeed = 2;
-let mySVG;
-let gameState = "menu"; // New variable to track the game state
-let menuSVG; // Add this line at the top with other global variables
-let floatOffset = 0; // Variable to control the float effect
-let catchSound, bgMusic;
-let lives = 3; // Start with 3 lives
-let exitButton;
+let characterSpeed = 5;
+let dotSpeed = 15;
+let playerWidth = 100;
+
+/* SVG images */
+let logoSVG, drop;
+let playerSVGs = null;
+let playerSVGIndex = 0;
+
+/* DOM elements */
+let exitButton, scoreElement, logoElement;
+
+/* Sound initialization */
+let catchSound;
 let soundInitialized = false;
+
+/* Animation */
+let dance;
+let aniWalk, oilDrop;
 
 
 function preload() {
-  mySVG = loadImage('character.svg');  // Load the SVG file
-  menuSVG = loadImage('logo-08.svg'); // Load the menu SVG image
+  logoSVG = loadImage('assets/logo-08.svg');
+  playerSVGs = [
+    {
+      name: 'pizza',
+      img: loadImage('assets/pizza.svg'),
+      width: 150,
+    },
+    {
+      name: 'fish',
+      img: loadImage('assets/fish.svg'),
+      width: 100,
+    },
+    {
+      name: 'fish',
+      img: loadImage('assets/salad.svg'),
+      width: 80,
+    },
+    {
+      name: 'fish',
+      img: loadImage('assets/cupcake.svg'),
+      width: 40,
+    },
+  ]
+  drop = loadImage('assets/drop-05.svg');
   catchSound = loadSound('coin.wav');  // Load the sound for catching dots
-  // bgMusic = loadSound('game.mp3');        // Load background music
-  // testSound = loadSound('test-sound.mp3', 
-  //   () => logMessage('Sound loaded successfully!'),
-  //   (err) => logMessage('Error loading sound:', err)
-  // );
-  testSound = new Howl({
-    src: ['test-sound.mp3'], // Provide the path to your audio file
-    loop: false,            // Enable looping
-    volume: 0.5            // Adjust volume (0 to 1)
-  });
+
+  aniWalk = loadAnimation(
+    'sprite/dance-09.png',
+    'sprite/dance-10.png',
+    'sprite/dance-11.png',
+    'sprite/dance-12.png',
+    'sprite/dance-13.png',
+    'sprite/dance-14.png',
+    'sprite/dance-15.png',
+    'sprite/dance-16.png',
+    'sprite/dance-17.png',
+    'sprite/dance-18.png',
+    'sprite/dance-19.png',
+    'sprite/dance-20.png',
+  );
+  aniWalk.frameDelay = 5;
+  oilDrop = loadAnimation(
+      'sprite/oilDrop-21.png',
+      'sprite/oilDrop-21.png',
+      'sprite/oilDrop-22.png',
+      'sprite/oilDrop-22.png',
+      'sprite/oilDrop-23.png',
+      'sprite/oilDrop-23.png',
+  );
+  aniWalk.frameDelay = 5;
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
-  console.log('setup!');
-  player = new Player();
-  character = new Character(mySVG);  // Create the character with the SVG image
-    // Get the Exit button element
+  createCanvas(windowWidth, windowHeight-60);
+  pixelDensity(1);
+  frameRate(30);
+  player = new Player(playerSVGs[playerSVGIndex]);
   exitButton = document.getElementById('exit-button');
-  
-  // Attach a click event listener to return to the menu
+  scoreElement = document.getElementById('score');
+  logoElement = document.getElementById('logo');
   exitButton.addEventListener('click', returnToMenu);
+  document.body.addEventListener('touchstart', () => {});
 
-    soundButton = document.getElementById('sound');
-  
-  // Attach a click event listener to return to the menu
-  soundButton.addEventListener('click', playSound);
+  dance = createSprite(width / 2 + 50, 100);
+  dance.scale = 0.15;
+  dance.addAnimation('dance', aniWalk);
+  dance.addAnimation('dropOil', oilDrop);
 
-  document.body.addEventListener('touchstart', () => {
-  if (Howler.ctx.state === 'suspended') {
-    Howler.ctx.resume().then(() => {
-      console.log('Audio context resumed');
-      logMessage('Audio context resumed');
-    });
-  }
-});
-}
-function playSound() {
-  logMessage('test !!!!');
-  // Example usage
-  try {
-    testSound.play();
-    logMessage('after play !!!!');
-  } catch (e) {
-    logMessage(e);
-  }
-
+  character = new Character();
 }
 
 function returnToMenu() {
-  gameState = "menu"; // Change back to menu state
-  resetGame();        // Reset game variables
+  gameState = 'menu';
+  resetGame();
 }
 
 function draw() {
-  if (gameState === "menu") {
-    exitButton.style.display = "none"; // Hide button on menu screen
-    displayMenu(); // Show the menu if the game is in "menu" state
-  } else if (gameState === "play") {
-    exitButton.style.display = "block"; // Show button during gameplay
-    playGame(); // Run the game loop if the game state is "play"
+  if (gameState === 'menu') {
+    exitButton.style.display = 'none';
+    scoreElement.style.display = 'none';
+    logoElement.style.display = 'none';
+    displayMenu();
+  } else if (gameState === 'play') {
+    exitButton.style.display = 'block';
+    scoreElement.style.display = 'block';
+    logoElement.style.display = 'block';
+    playGame();
   }
 }
 function displayMenu() {
@@ -88,52 +124,43 @@ function displayMenu() {
   imageMode(CENTER);
   
   // Calculate floating effect with sin() for smooth oscillation
-  floatOffset = sin(millis() / 150) * 10; // Adjust 500 for speed and 10 for amplitude
+  let floatOffset = sin(millis() / 150) * 10;
 
-  // Display the menu SVG image with the floating effect
-  image(menuSVG, width / 2, height / 2 - 50 + floatOffset);
-  
-  // Display text under the image
+  image(logoSVG, width / 2, height / 2 - 50 + floatOffset);
   textSize(20);
   fill(255);
   textAlign(CENTER, CENTER);
-  text("Press Enter to Start", width / 2, height / 2 + 100);
+  text('Press Enter to Start', width / 2, height / 2 + 100);
 }
 
 function keyPressed() {
-  if (gameState === "menu" && keyCode === ENTER) {
-    gameState = "play"; // Start the game when Enter is pressed
-    // bgMusic.loop();  // Start background music in a loop
+  if (gameState === 'menu' && keyCode === ENTER) {
+    gameState = 'play';
   }
 }
 
 function resetGame() {
   score = 0;
   level = 1;
-  lives = 3;
   fallingDots = [];
-  playerWidth = 100;
   playerSpeed = 12;
-  dotSpeed = 2;
-  // bgMusic.stop();
+  characterSpeed = 5;
+  dotSpeed = 15;
+  scoreElement.children[1].innerHTML = score;
+  player.x = width / 2 - player.width / 2;
+  playerSVGIndex = 0;
+  player.updateImg(playerSVGs[playerSVGIndex]);
 }
 
 function playGame() {
   background('#81AA7D');
-  
-  // Draw scoreboard
-  textSize(16);
-  fill(0);
-  text('Score: ' + score, 50, 20);
-  text('Level: ' + level, 50, 40);
-  text('Lives: ' + lives, 10, 60); // Display lives on the screen
-  
-  // Move and display the character
+
   character.move();
   character.display();
 
   // Make the character drop dots at intervals
-  if (frameCount % (Math,min(10, 30-level)+Math.round(Math.random()*100)) === 0) {  // Drop a dot every 30 frames
+  const rand = Math.round(Math.random()*500);
+  if (rand < 20 + level) {
     character.dropDot();
   }
 
@@ -146,52 +173,51 @@ function playGame() {
     // Check if dot is caught by the player
     if (fallingDots[i].hits(player)) {
       score++;
-      catchSound.play();  // Play sound when a dot is caught
-      document.getElementById('top').innerHTML = score;
+      catchSound.play();
+      scoreElement.children[1].innerHTML = score;
       fallingDots.splice(i, 1); // Remove dot if caught
-      // Check for level progression
+
       if (score > 0 && score % 10 === 0) {
         nextLevel();
       }
     }
     
-    // Remove dot if it falls below the screen
+    // game over
     if (fallingDots[i] && fallingDots[i].y > height) {
-      fallingDots.splice(i, 1);
-      lives--;                 // Decrease lives
-
-      if (lives <= 0) {
-        gameState = "menu";     // Return to menu if lives reach 0
-        resetGame();            // Reset the game state
-      }
+      gameState = 'menu';
+      resetGame();
     }
   }
   
   // Update and display player
   player.update();
   player.display();
+
+  drawSprites();
 }
 
 function nextLevel() {
   level++;
+  playerSVGIndex = playerSVGIndex < 3 ? playerSVGIndex + 1 : 3;
   dotInterval = max(10, dotInterval - 5); // Minimum interval of 10 frames
-  playerWidth = max(40, playerWidth - 10);
+  player.updateImg(playerSVGs[playerSVGIndex]);
   dotSpeed += 0.5; // Dots fall faster
   playerSpeed += 0.5; // Player moves faster
+  characterSpeed += 0.5;
 }
 
 function touchStarted() {
-  if (gameState === "menu") {
-    gameState = "play"; // Start the game
+  if (gameState === 'menu') {
+    gameState = 'play'; // Start the game
     if (!soundInitialized) {
       // Initialize all sounds on the first touch
-    catchSound.play();
+      catchSound.play();
     }
   }
 }
 
 function touchMoved() {
-  if (gameState === "play") {
+  if (gameState === 'play') {
     // Move the player to follow the touch position
     player.x = mouseX - player.width / 2;
 
@@ -205,12 +231,14 @@ function touchMoved() {
 
 
 class Player {
-  constructor() {
-    this.x = width / 2 - playerWidth / 2;
-    this.y = height - 200;
-    this.width = playerWidth;
-    this.height = 20;
+  constructor(svg) {
+    console.log(svg);
+    this.x = width / 2;
+    this.y = height - 80;
+    this.width = svg.width;
+    this.height = 50;
     this.speed = playerSpeed;
+    this.svg = svg.img;
   }
   
   update() {
@@ -224,32 +252,33 @@ class Player {
     
     // Keep player within canvas bounds
     this.x = constrain(this.x, 0, width - this.width);
-    
-        // Update player width dynamically based on global playerWidth
-    this.width = playerWidth; // Update width dynamically in every frame
   }
   
   display() {
-    fill(0);
-    rect(this.x, this.y, this.width, this.height);
+    // rect(this.x, this.y, this.width, this.height);
+    image(this.svg, this.x, this.y, this.width, this.height);
+  }
+
+
+  updateImg(newImg) {
+    this.svg = newImg.img;
+    this.width = newImg.width;
   }
 }
 
 class Character {
-  constructor(svgImage) {
-    this.x = windowWidth / 2; // Start at a random x position
-    this.y = 50;            // Fixed y position near the top
+  constructor() {
+    this.y = 100;
     this.width = 100;
     this.height = 100;
-    this.svg = svgImage;     // SVG image
-    this.speed = 2;
-    this.moveDirection = 1;  // 1 means right, -1 means left
-    this.changeDirectionInterval = 60; // Change direction every 60 frames
+    this.moveDirection = 1; // 1 means right, -1 means left
+    this.changeDirectionInterval = 40;
     this.frameCount = 0;
   }
 
   move() {
-    this.x += this.speed * this.moveDirection;
+    // this.x += characterSpeed * this.moveDirection;
+    dance.position.x += characterSpeed * this.moveDirection;
 
     // Change direction randomly every 'changeDirectionInterval' frames
     this.frameCount++;
@@ -258,29 +287,30 @@ class Character {
     }
 
     // Keep character within screen bounds
-    if (this.x < 0 || this.x > width - this.width) {
+    if (dance.position.x - this.width/2 < 0 || dance.position.x > width - this.width) {
       this.moveDirection *= -1;  // Reverse direction when hitting edge
     }
   }
 
   dropDot() {
-    // Drop a dot from the character’s current position
-    fallingDots.push(new Dot(this.x + this.width / 2, this.y + this.height / 2));
+    dance.changeAnimation('dropOil');
+    fallingDots.push(new Dot(drop, dance.position.x - 10, this.y + this.height / 2));
+    setTimeout(() => {
+      dance.changeAnimation('dance');
+    }, 200);
   }
 
-  display() {
-    // Display the character (the SVG image)
-    image(this.svg, this.x, this.y, this.width, this.height);
-  }
+  display() {}
 }
 
 
 class Dot {
-  constructor(x,y) {
+  constructor(svg, x,y) {
     this.x = x; // Start at the character’s x position
     this.y = y; // Start at the bottom of the character
-    this.r = 8;
+    this.r = 6;
     this.speed = dotSpeed;
+    this.svg = svg;
   }
   
   update() {
@@ -288,36 +318,16 @@ class Dot {
   }
   
   display() {
-    fill(0, 0, 0);
-    ellipse(this.x, this.y, this.r * 2);
+    image(this.svg, this.x, this.y, this.r*2, 20);
   }
   
   hits(player) {
-    return (this.y + this.r > player.y && 
-            this.x > player.x && 
-            this.x < player.x + player.width);
+    return (this.y + this.r > player.y &&
+      this.y - this.r < player.y + player.height &&
+      this.x > player.x &&
+      this.x < player.x + player.width);
   }
 }
-
-function logMessage(message) {
-  const logDiv = document.getElementById('debugLog') || createLogDiv();
-  logDiv.innerHTML += `<p>${message}</p>`;
-}
-
-function createLogDiv() {
-  const div = document.createElement('div');
-  div.id = 'debugLog';
-  div.style.position = 'absolute';
-  div.style.top = '200px';
-  div.style.width = '100%';
-  div.style.color = 'black';
-  div.style.fontSize = '12px';
-  div.style.overflowY = 'scroll';
-  div.style.zIndex = '1000';
-  document.body.appendChild(div);
-  return div;
-}
-
 
 (() => {
   console.log('yoyo');
